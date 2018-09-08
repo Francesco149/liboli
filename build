@@ -1,0 +1,13 @@
+#!/bin/sh
+
+dir="`dirname "$0"`"
+. "$dir"/cflags
+abspath=`realpath "$dir"`
+exename=`basename "$abspath"`
+
+cflags="$cflags -shared"
+cflags="$cflags -DOLI_ALL -DOLI_IMPLEMENTATION"
+ldflags="$ldflags -fpic"
+
+$cc $cflags "$@" oli.c $ldflags -o $exename.so
+

@@ -1,0 +1,6 @@
+/slisp
+*.swp
+*.log
+*.so
+tests/*
+!tests/*.c
