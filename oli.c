@@ -50,7 +50,7 @@
 #ifndef OLI_H
 #define OLI_H
 
-#define OLI_MAJOR 1
+#define OLI_MAJOR 2
 #define OLI_MINOR 0
 #define OLI_PATCH 0
 
@@ -302,12 +302,6 @@ void arena_free(arena_t* arena);
  *     // ...
  * }
  */
-
-typedef struct intern {
-    int len;
-    struct intern* next;
-    char str[1]; /* actually len bytes */
-} intern_t;
 
 typedef struct {
     arena_t arena;
@@ -605,6 +599,12 @@ void arena_free(arena_t* arena) {
 /* --------------------------------------------------------------------- */
 #if defined(OLI_INTERN) || defined(OLI_ALL)
 #include <string.h>
+
+typedef struct intern {
+    int len;
+    struct intern* next;
+    char str[1]; /* actually len bytes */
+} intern_t;
 
 char* intern_range(interns_t* interns, char* start, char* end) {
     intern_t* new_intern;
