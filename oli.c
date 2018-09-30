@@ -52,7 +52,7 @@
 
 #define OLI_MAJOR 3
 #define OLI_MINOR 1
-#define OLI_PATCH 0
+#define OLI_PATCH 1
 
 #define pp_stringify1(x) #x
 #define pp_stringify(x) pp_stringify1(x)
@@ -470,7 +470,7 @@ int string_len(string_t* s) {
 
 char* string_dup_c(string_t* s) {
   int len = string_len(s);
-  char* res = (char*)malloc(len + 1);
+  char* res = malloc(len + 1);
   if (res) {
     memcpy(res, s->start, len);
     res[len] = 0;
@@ -561,8 +561,8 @@ int map_reserve(map_t* map, int new_cap) {
   new_cap = al_max(16, new_cap);
   new_map.len = 0;
   new_map.cap = new_cap;
-  new_map.keys = (int*)calloc(new_cap, sizeof(int));
-  new_map.values = (void**)malloc(new_cap * sizeof(void*));
+  new_map.keys = calloc(new_cap, sizeof(int));
+  new_map.values = malloc(new_cap * sizeof(void*));
   if (!new_map.keys || !new_map.values) {
     free(new_map.keys);
     free(new_map.values);

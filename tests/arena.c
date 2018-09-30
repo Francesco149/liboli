@@ -16,7 +16,7 @@ int main() {
   char* first_block;
   char* first_block_end;
   for (i = 0; i < LOOPS; ++i) {
-    p = (int*)arena_alloc(&arena, sizeof(int) * i);
+    p = arena_alloc(&arena, sizeof(int) * i);
     if (!i) {
       first_block = (char*)p;
       first_block_end = arena.end_of_block;
