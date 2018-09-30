@@ -361,6 +361,7 @@ void input_pop(input_t* i, int rewind);
 void input_from_string(input_t* i, char* s);
 void input_from_range(input_t* i, char* start, char* end);
 void input_from_file(input_t* i, FILE* f);
+int input_state_str(input_t* i, char* buf);
 char input_getc(input_t* i);
 int input_eof(input_t* i);
 int input_any(input_t* i, char** desc);
@@ -382,7 +383,7 @@ int input_string(input_t* i, char* str, char** desc);
 #ifdef OLI_IMPLEMENTATION
 
 #define OLI_MAJOR 4
-#define OLI_MINOR 2
+#define OLI_MINOR 3
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
@@ -802,6 +803,10 @@ void input_from_file(input_t* i, FILE* f) {
   input_init(i);
   i->type = I_FILE;
   i->data.file = f;
+}
+
+int input_state_str(input_t* i, char* buf) {
+  return sprintf(buf, "%s:%d,%d", i->filename, i->row + 1, i->col + 1);
 }
 
 char input_getc(input_t* i) {

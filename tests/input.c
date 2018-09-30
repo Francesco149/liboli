@@ -11,6 +11,7 @@ int alpha(char c) {
 FILE* f;
 char* desc;
 input_t i;
+char buf[512];
 
 int main() {
   input_from_string(&i, "hello world tHiS is a parser!");
@@ -84,6 +85,18 @@ int main() {
   test_assert(input_string(&i, "OLI_INPUT", &desc));
   test_assert(!strcmp(desc, "OLI_INPUT"));
   test_assert(i.backtrack.len == 9);
+  test_assert(i.pos_stack.len == 1);
+  input_state_str(&i, buf);
+  test_assert(!strcmp(buf, "<anonymous>:1,18"));
+  test_assert(input_char(&i, '\n', &desc));
+  test_assert(!strcmp(desc, "\n"));
+  test_assert(input_string(&i, "#include", &desc));
+  test_assert(!strcmp(desc, "#include"));
+  input_state_str(&i, buf);
+  test_assert(!strcmp(buf, "<anonymous>:2,9"));
+  test_assert(input_any(&i, &desc));
+  test_assert(!strcmp(desc, " "));
+  test_assert(i.backtrack.len == 1);
   test_assert(i.pos_stack.len == 1);
 
   return 0;
