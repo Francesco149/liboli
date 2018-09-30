@@ -336,6 +336,9 @@ char* intern_str(interns_t* interns, char* str);
  * of the matched string in *desc using an internal memory arena which
  * is valid until input_free is called.
  * if desc is 0, no allocation will happen.
+ *
+ * all matching functions (such as input_any, input_char, ...) match at
+ * the current position and return 1 for a match and 0 for no match
  */
 
 #include <stdio.h>
