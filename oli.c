@@ -123,12 +123,15 @@ void log_println(char* fmt, ...);
  * the new design of this module is inspired by https://github.com/rxi/vec
  */
 
-#define def_array2(type, name) \
-  typedef struct { \
+#define array_t(type) \
+  struct { \
     int cap; \
     int len; \
     type* data; \
-  } name##_array_t
+  }
+
+#define def_array2(type, name) \
+  typedef array_t(type) name##_array_t
 
 #define def_array(type) def_array2(type, type)
 #define def_array_t(type) def_array2(type##_t, type)
@@ -378,7 +381,7 @@ int input_string(input_t* i, char* str, char** desc);
 #ifdef OLI_IMPLEMENTATION
 
 #define OLI_MAJOR 4
-#define OLI_MINOR 0
+#define OLI_MINOR 1
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
