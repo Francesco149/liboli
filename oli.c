@@ -347,6 +347,7 @@ typedef struct {
     FILE* file;
   } data;
   arena_t arena;
+  char* filename;
   int col;
   int row;
   char last;
@@ -381,8 +382,8 @@ int input_string(input_t* i, char* str, char** desc);
 #ifdef OLI_IMPLEMENTATION
 
 #define OLI_MAJOR 4
-#define OLI_MINOR 1
-#define OLI_PATCH 1
+#define OLI_MINOR 2
+#define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
 #define pp_stringify(x) pp_stringify1(x)
@@ -779,25 +780,28 @@ void input_pop(input_t* i, int rewind) {
   --i->pos_stack.len;
 }
 
-void input_from_string(input_t* i, char* s) {
+void input_init(input_t* i) {
   memset(i, 0, sizeof(input_t));
+  i->filename = "<anonymous>";
+  array_append(&i->pos_stack, 0);
+}
+
+void input_from_string(input_t* i, char* s) {
+  input_init(i);
   i->type = I_STRING;
   string_from_c(&i->data.string, s);
-  array_append(&i->pos_stack, 0);
 }
 
 void input_from_range(input_t* i, char* start, char* end) {
-  memset(i, 0, sizeof(input_t));
+  input_init(i);
   i->type = I_STRING;
   string_from_range(&i->data.string, start, end);
-  array_append(&i->pos_stack, 0);
 }
 
 void input_from_file(input_t* i, FILE* f) {
-  memset(i, 0, sizeof(input_t));
+  input_init(i);
   i->type = I_FILE;
   i->data.file = f;
-  array_append(&i->pos_stack, 0);
 }
 
 char input_getc(input_t* i) {
