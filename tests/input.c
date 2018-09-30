@@ -68,6 +68,8 @@ int main() {
   test_assert(input_string(&i, "parser!", &desc));
   test_assert(!strcmp(desc, "parser!"));
   test_assert(input_eof(&i));
+  test_assert(i.backtrack.len == 7);
+  test_assert(i.pos_stack.len == 1);
   input_free(&i);
 
   test_assert(f = fopen("tests/input.c", "rb"));
@@ -81,6 +83,8 @@ int main() {
   test_assert(!input_string(&i, "OLI_INBUTT", &desc));
   test_assert(input_string(&i, "OLI_INPUT", &desc));
   test_assert(!strcmp(desc, "OLI_INPUT"));
+  test_assert(i.backtrack.len == 9);
+  test_assert(i.pos_stack.len == 1);
 
   return 0;
 }

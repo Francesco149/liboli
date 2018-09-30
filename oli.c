@@ -319,8 +319,7 @@ char* intern_str(interns_t* interns, char* str);
 /*
  * reads from either a file or a string, with parsing in mind
  *
- * we can push and pop positions up to pos_stack's size. the total range
- * of the stored positions cannot exceed the backtrack buffer size
+ * we can push and pop positions onto a stack using input_push/pop
  *
  * when we pop a position, we can decide to rewind to it by passing
  * rewind = 1 or just discard it (rewind = 0)
@@ -338,6 +337,9 @@ char* intern_str(interns_t* interns, char* str);
 
 enum { I_STRING, I_FILE };
 
+def_array(int);
+def_array(char);
+
 typedef struct {
   int type;
   union {
@@ -348,10 +350,8 @@ typedef struct {
   int col;
   int row;
   char last;
-  int pos_top;
-  int pos_stack[64];
-  int backtrack_size;
-  char backtrack[4096];
+  int_array_t pos_stack;
+  char_array_t backtrack;
 } input_t;
 
 void input_free(input_t* i);
@@ -382,7 +382,7 @@ int input_string(input_t* i, char* str, char** desc);
 
 #define OLI_MAJOR 4
 #define OLI_MINOR 1
-#define OLI_PATCH 0
+#define OLI_PATCH 1
 
 #define pp_stringify1(x) #x
 #define pp_stringify(x) pp_stringify1(x)
@@ -759,55 +759,59 @@ char* intern_str(interns_t* interns, char* str) {
 
 void input_free(input_t* i) {
   arena_free(&i->arena);
+  array_free(&i->pos_stack);
+  array_free(&i->backtrack);
 }
 
 void input_push(input_t* i) {
-  if (i->pos_top >= countof(i->pos_stack) - 1) {
-    return;
-  }
-  ++i->pos_top;
-  i->pos_stack[i->pos_top] = i->pos_stack[i->pos_top - 1];
+  int top = i->pos_stack.len - 1;
+  array_append(&i->pos_stack, i->pos_stack.data[top]);
 }
 
 void input_pop(input_t* i, int rewind) {
-  if (i->pos_top <= 0) {
+  if (i->pos_stack.len <= 1) {
     return;
   }
   if (!rewind) {
-    i->pos_stack[i->pos_top - 1] = i->pos_stack[i->pos_top];
+    int top = i->pos_stack.len - 1;
+    i->pos_stack.data[top - 1] = i->pos_stack.data[top];
   }
-  --i->pos_top;
+  --i->pos_stack.len;
 }
 
 void input_from_string(input_t* i, char* s) {
   memset(i, 0, sizeof(input_t));
   i->type = I_STRING;
   string_from_c(&i->data.string, s);
+  array_append(&i->pos_stack, 0);
 }
 
 void input_from_range(input_t* i, char* start, char* end) {
   memset(i, 0, sizeof(input_t));
   i->type = I_STRING;
   string_from_range(&i->data.string, start, end);
+  array_append(&i->pos_stack, 0);
 }
 
 void input_from_file(input_t* i, FILE* f) {
   memset(i, 0, sizeof(input_t));
   i->type = I_FILE;
   i->data.file = f;
+  array_append(&i->pos_stack, 0);
 }
 
 char input_getc(input_t* i) {
-  int pos = i->pos_stack[i->pos_top];
-  if (pos < i->backtrack_size) {
-    return i->backtrack[pos];
+  int top = i->pos_stack.len - 1;
+  int pos = i->pos_stack.data[top];
+  if (pos < i->backtrack.len) {
+    return i->backtrack.data[pos];
   }
-  if (i->pos_stack[0] >= i->backtrack_size) {
+  if (i->pos_stack.data[0] >= i->backtrack.len) {
     int j;
-    for (j = 0; j <= i->pos_top; ++j) {
-      i->pos_stack[j] -= i->backtrack_size;
+    for (j = 0; j < i->pos_stack.len; ++j) {
+      i->pos_stack.data[j] -= i->backtrack.len;
     }
-    i->backtrack_size = 0;
+    i->backtrack.len = 0;
   }
   switch (i->type) {
     case I_STRING: return *i->data.string.start;
@@ -825,10 +829,9 @@ int input_eof(input_t* i) {
 }
 
 int input_success(input_t* i, char c, char** desc) {
-  if (i->pos_stack[i->pos_top] >= i->backtrack_size) {
-    if (i->backtrack_size < countof(i->backtrack)) {
-      i->backtrack[i->backtrack_size++] = c;
-    }
+  int top = i->pos_stack.len - 1;
+  if (i->pos_stack.data[top] >= i->backtrack.len) {
+    array_append(&i->backtrack, c);
     if (c == '\n') {
       ++i->row;
       i->col = 0;
@@ -840,7 +843,7 @@ int input_success(input_t* i, char c, char** desc) {
     }
     i->last = c;
   }
-  ++i->pos_stack[i->pos_top];
+  ++i->pos_stack.data[top];
   if (desc) {
     *desc = arena_alloc(&i->arena, 2);
     if (*desc) {
@@ -853,7 +856,8 @@ int input_success(input_t* i, char c, char** desc) {
 
 int input_failure(input_t* i, char c) {
   if (i->type == I_FILE) {
-    if (i->pos_stack[i->pos_top] >= i->backtrack_size) {
+    int top = i->pos_stack.len - 1;
+    if (i->pos_stack.data[top] >= i->backtrack.len) {
       ungetc(c, i->data.file);
     }
   }
