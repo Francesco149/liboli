@@ -50,7 +50,7 @@
 #ifndef OLI_H
 #define OLI_H
 
-#define OLI_MAJOR 2
+#define OLI_MAJOR 3
 #define OLI_MINOR 0
 #define OLI_PATCH 0
 
@@ -120,54 +120,54 @@ void log_println(char* fmt, ...);
 #include <stdlib.h>
 
 /*
- * def_array(mytype) will define a resizable array for the given type.
+ * def_array(mytype) will define a type-safe resizable array mytype_array_t
+ * you can use array_* macros to operate on it
  *
- * here is exactly what's generated:
- * - the type mytype_array_t (must be initialized to zero)
- * - int reserve_mytype(mytype_array_t* arr, int n)
- *   returns 1 on success and 0 on failure (out of memory)
- * - int append_mytype(mytype_array_t* arr, mytype x)
- *   returns 1 on success and 0 on failure (out of memory)
- * - void free_mytype_array(mytype_array_t* arr)
+ * in case of out-of-memory, operations that can grow the array don't do
+ * anything
+ *
+ * the new design of this module is inspired by https://github.com/rxi/vec
  */
 
 #define def_array2(type, name) \
-typedef struct { \
-    type* data; \
-    int cap; \
-    int len; \
-} name##_array_t; \
-\
-int reserve_##name(name##_array_t* arr, int n) { \
-    if (arr->cap <= n) { \
-        void* new_data; \
-        arr->cap = arr->cap ? arr->cap * 2 : 16; \
-        new_data = realloc(arr->data, sizeof(type) * arr->cap); \
-        if (!new_data) { \
-            return 0; \
-        } \
-        arr->data = (type*)new_data; \
-    } \
-    return 1; \
-} \
-\
-int append_##name(name##_array_t* arr, type x) { \
-    if (!reserve_##name(arr, arr->len + 1)) { \
-        return 0; \
-    } \
-    arr->data[arr->len++] = x; \
-    return 1; \
-} \
-\
-void free_##name##_array(name##_array_t* arr) { \
-    free(arr->data); \
-    arr->data = 0; \
-    arr->cap = 0; \
-    arr->len = 0; \
-}
+    typedef struct { \
+        int cap; \
+        int len; \
+        type* data; \
+    } name##_array_t
 
 #define def_array(type) def_array2(type, type)
 #define def_array_t(type) def_array2(type##_t, type)
+
+#define array_reserve(arr, n) \
+    array_reserve_i(n, array_unpack(arr))
+
+#define array_free(arr) \
+    array_free_i(array_unpack(arr))
+
+#define array_append(arr, x) \
+    (array_reserve((arr), (arr)->len + 1) \
+        ? ((arr)->data[(arr)->len++] = (x), 1) \
+        : 0)
+
+#define array_cat(arr, x, n) do { \
+    if (array_reserve(arr, (arr)->len + (n))) { \
+        int _i = 0; \
+        for (_i = 0; _i < (n); ++_i) { \
+            (arr)->data[(arr)->len++] = (x)[_i]; \
+        } \
+    } \
+} while (0)
+
+/* internal helpers, not to be used directly */
+#define array_unpack(arr) \
+    &(arr)->cap, \
+    &(arr)->len, \
+    (void**)&(arr)->data, \
+    (int)sizeof((arr)->data[0])
+
+int array_reserve_i(int n, int* cap, int* len, void** data, int esize);
+void array_free_i(int* cap, int* len, void** data, int esize);
 
 #endif /* OLI_ARRAY */
 /* --------------------------------------------------------------------- */
@@ -264,7 +264,7 @@ int bit_po2_up(int x);
 #define ARENA_BLOCK_SIZE (1024 * 1024)
 
 typedef char* pchar_t;
-def_array_t(pchar)
+def_array_t(pchar);
 
 typedef struct {
     char* block;
@@ -353,6 +353,39 @@ void log_println(char* fmt, ...) {
 }
 
 #endif /* OLI_LOG */
+/* --------------------------------------------------------------------- */
+#if defined(OLI_ARRAY) || defined(OLI_ALL)
+
+/*
+ * these don't always use all params but we always pass all of them to
+ * ensure that we get a compiler error on things that don't have the same
+ * fields as an array struct
+ */
+
+int array_reserve_i(int n, int* cap, int* len, void** data, int esize) {
+    (void)len;
+    if (*cap <= n) {
+        void* newdata;
+        int newcap = *cap ? *cap * 2 : 16;
+        newdata = realloc(*data, esize * newcap);
+        if (!newdata) {
+            return 0;
+        }
+        *data = newdata;
+        *cap = newcap;
+    }
+    return 1;
+}
+
+void array_free_i(int* cap, int* len, void** data, int esize) {
+    (void)esize;
+    free(*data);
+    *cap = 0;
+    *len = 0;
+    *data = 0;
+}
+
+#endif /* OLI_ARRAY */
 /* --------------------------------------------------------------------- */
 #if defined(OLI_STRING) || defined(OLI_ALL)
 #include <stdlib.h>
@@ -571,7 +604,7 @@ int arena_reserve(arena_t* arena, int min_size) {
     }
     arena->block = new_block;
     arena->end_of_block = new_block + size;
-    append_pchar(&arena->blocks, arena->block);
+    array_append(&arena->blocks, arena->block);
     return 1;
 }
 
@@ -591,7 +624,7 @@ void arena_free(arena_t* arena) {
     for (i = 0; i < arena->blocks.len; ++i) {
         free(arena->blocks.data[i]);
     }
-    free_pchar_array(&arena->blocks);
+    array_free(&arena->blocks);
     arena->block = 0;
     arena->end_of_block = 0;
 }

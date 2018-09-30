@@ -5,7 +5,7 @@
 
 #define LOOPS 1000
 typedef int* pint;
-def_array(pint)
+def_array(pint);
 
 arena_t arena;
 pint_array_t arrays;
@@ -25,7 +25,7 @@ int main() {
         for (j = 0; j < i; ++j) {
             p[j] = j;
         }
-        append_pint(&arrays, p);
+        array_append(&arrays, p);
     }
     for (i = 0; i < LOOPS; ++i) {
         p = arrays.data[i];
