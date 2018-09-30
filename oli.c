@@ -50,18 +50,8 @@
 #ifndef OLI_H
 #define OLI_H
 
-#define OLI_MAJOR 3
-#define OLI_MINOR 1
-#define OLI_PATCH 1
-
-#define pp_stringify1(x) #x
-#define pp_stringify(x) pp_stringify1(x)
-
-#define OLI_VERSION_STR \
-  "liboli-" \
-  pp_stringify(OLI_MAJOR) "." \
-  pp_stringify(OLI_MINOR) "." \
-  pp_stringify(OLI_PATCH)
+void oli_version(int* major, int* minor, int* patch);
+char const* oli_version_str();
 
 #if defined(OLI_INTERN) || defined(OLI_INPUT)
 #define OLI_MAP
@@ -386,6 +376,29 @@ int input_string(input_t* i, char* str, char** desc);
 /* ##################################################################### */
 
 #ifdef OLI_IMPLEMENTATION
+
+#define OLI_MAJOR 4
+#define OLI_MINOR 0
+#define OLI_PATCH 0
+
+#define pp_stringify1(x) #x
+#define pp_stringify(x) pp_stringify1(x)
+
+#define OLI_VERSION_STR \
+  "liboli-" \
+  pp_stringify(OLI_MAJOR) "." \
+  pp_stringify(OLI_MINOR) "." \
+  pp_stringify(OLI_PATCH)
+
+void oli_version(int* major, int* minor, int* patch) {
+  *major = OLI_MAJOR;
+  *minor = OLI_MINOR;
+  *patch = OLI_PATCH;
+}
+
+char const* oli_version_str() {
+  return OLI_VERSION_STR;
+}
 
 /* --------------------------------------------------------------------- */
 #if defined(OLI_LOG) || defined(OLI_ALL)
