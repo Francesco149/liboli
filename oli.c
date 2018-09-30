@@ -51,7 +51,7 @@
 #define OLI_H
 
 #define OLI_MAJOR 3
-#define OLI_MINOR 0
+#define OLI_MINOR 1
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
@@ -63,7 +63,7 @@
   pp_stringify(OLI_MINOR) "." \
   pp_stringify(OLI_PATCH)
 
-#ifdef OLI_INTERN
+#if defined(OLI_INTERN) || defined(OLI_INPUT)
 #define OLI_MAP
 #define OLI_ARENA
 #endif
@@ -79,6 +79,10 @@
 
 #if defined(OLI_ARENA) || defined(OLI_MAP)
 #define OLI_ALGO
+#endif
+
+#if defined(OLI_INPUT)
+#define OLI_STRING
 #endif
 
 /* --------------------------------------------------------------------- */
@@ -316,6 +320,61 @@ char* intern_range(interns_t* interns, char* start, char* end);
 char* intern_str(interns_t* interns, char* str);
 
 #endif /* OLI_INTERN */
+/* --------------------------------------------------------------------- */
+#if defined(OLI_INPUT) || defined(OLI_ALL)
+
+/*
+ * reads from either a file or a string, with parsing in mind
+ *
+ * we can push and pop positions up to pos_stack's size. the total range
+ * of the stored positions cannot exceed the backtrack buffer size
+ *
+ * when we pop a position, we can decide to rewind to it by passing
+ * rewind = 1 or just discard it (rewind = 0)
+ *
+ * functions that take a desc parameter will allocate a copy
+ * of the matched string in *desc using an internal memory arena which
+ * is valid until input_free is called.
+ * if desc is 0, no allocation will happen.
+ */
+
+#include <stdio.h>
+
+enum { I_STRING, I_FILE };
+
+typedef struct {
+  int type;
+  union {
+    string_t string;
+    FILE* file;
+  } data;
+  arena_t arena;
+  int col;
+  int row;
+  char last;
+  int pos_top;
+  int pos_stack[64];
+  int backtrack_size;
+  char backtrack[4096];
+} input_t;
+
+void input_free(input_t* i);
+void input_push(input_t* i);
+void input_pop(input_t* i, int rewind);
+void input_from_string(input_t* i, char* s);
+void input_from_range(input_t* i, char* start, char* end);
+void input_from_file(input_t* i, FILE* f);
+char input_getc(input_t* i);
+int input_eof(input_t* i);
+int input_any(input_t* i, char** desc);
+int input_char(input_t* i, char expected, char** desc);
+int input_range(input_t* i, char start, char end, char** desc);
+int input_one_of(input_t* i, char* charset, char** desc);
+int input_none_of(input_t* i, char* charset, char** desc);
+int input_satisfy(input_t* i, int(*condition)(char), char** desc);
+int input_string(input_t* i, char* str, char** desc);
+
+#endif /* OLI_INPUT */
 /* --------------------------------------------------------------------- */
 #endif /* OLI_H */
 
@@ -674,5 +733,191 @@ char* intern_str(interns_t* interns, char* str) {
 }
 
 #endif /* OLI_INTERN */
+/* --------------------------------------------------------------------- */
+#if defined(OLI_INPUT) || defined(OLI_ALL)
+
+#include <string.h>
+
+void input_free(input_t* i) {
+  arena_free(&i->arena);
+}
+
+void input_push(input_t* i) {
+  if (i->pos_top >= countof(i->pos_stack) - 1) {
+    return;
+  }
+  ++i->pos_top;
+  i->pos_stack[i->pos_top] = i->pos_stack[i->pos_top - 1];
+}
+
+void input_pop(input_t* i, int rewind) {
+  if (i->pos_top <= 0) {
+    return;
+  }
+  if (!rewind) {
+    i->pos_stack[i->pos_top - 1] = i->pos_stack[i->pos_top];
+  }
+  --i->pos_top;
+}
+
+void input_from_string(input_t* i, char* s) {
+  memset(i, 0, sizeof(input_t));
+  i->type = I_STRING;
+  string_from_c(&i->data.string, s);
+}
+
+void input_from_range(input_t* i, char* start, char* end) {
+  memset(i, 0, sizeof(input_t));
+  i->type = I_STRING;
+  string_from_range(&i->data.string, start, end);
+}
+
+void input_from_file(input_t* i, FILE* f) {
+  memset(i, 0, sizeof(input_t));
+  i->type = I_FILE;
+  i->data.file = f;
+}
+
+char input_getc(input_t* i) {
+  int pos = i->pos_stack[i->pos_top];
+  if (pos < i->backtrack_size) {
+    return i->backtrack[pos];
+  }
+  if (i->pos_stack[0] >= i->backtrack_size) {
+    int j;
+    for (j = 0; j <= i->pos_top; ++j) {
+      i->pos_stack[j] -= i->backtrack_size;
+    }
+    i->backtrack_size = 0;
+  }
+  switch (i->type) {
+    case I_STRING: return *i->data.string.start;
+    case I_FILE: return getc(i->data.file);
+  }
+  return 0;
+}
+
+int input_eof(input_t* i) {
+  switch (i->type) {
+    case I_STRING: return string_len(&i->data.string) <= 0;
+    case I_FILE: return feof(i->data.file);
+  }
+  return 1;
+}
+
+int input_success(input_t* i, char c, char** desc) {
+  if (i->pos_stack[i->pos_top] >= i->backtrack_size) {
+    if (i->backtrack_size < countof(i->backtrack)) {
+      i->backtrack[i->backtrack_size++] = c;
+    }
+    if (c == '\n') {
+      ++i->row;
+      i->col = 0;
+    } else {
+      ++i->col;
+    }
+    if (i->type == I_STRING) {
+      ++i->data.string.start;
+    }
+    i->last = c;
+  }
+  ++i->pos_stack[i->pos_top];
+  if (desc) {
+    *desc = arena_alloc(&i->arena, 2);
+    if (*desc) {
+      (*desc)[0] = c;
+      (*desc)[1] = 0;
+    }
+  }
+  return 1;
+}
+
+int input_failure(input_t* i, char c) {
+  if (i->type == I_FILE) {
+    if (i->pos_stack[i->pos_top] >= i->backtrack_size) {
+      ungetc(c, i->data.file);
+    }
+  }
+  return 0;
+}
+
+int input_any(input_t* i, char** desc) {
+  char c = input_getc(i);
+  if (input_eof(i)) {
+    return 0;
+  }
+  return input_success(i, c, desc);
+}
+
+int input_char(input_t* i, char expected, char** desc) {
+  char c = input_getc(i);
+  if (input_eof(i)) {
+    return 0;
+  }
+  return c == expected
+    ? input_success(i, c, desc)
+    : input_failure(i, c);
+}
+
+int input_range(input_t* i, char start, char end, char** desc) {
+  char c = input_getc(i);
+  if (input_eof(i)) {
+    return 0;
+  }
+  return c >= start && c <= end
+    ? input_success(i, c, desc)
+    : input_failure(i, c);
+}
+
+int input_one_of(input_t* i, char* charset, char** desc) {
+  char c = input_getc(i);
+  if (input_eof(i)) {
+    return 0;
+  }
+  return strchr(charset, c)
+    ? input_success(i, c, desc)
+    : input_failure(i, c);
+}
+
+int input_none_of(input_t* i, char* charset, char** desc) {
+  char c = input_getc(i);
+  if (input_eof(i)) {
+    return 0;
+  }
+  return !strchr(charset, c)
+    ? input_success(i, c, desc)
+    : input_failure(i, c);
+}
+
+int input_satisfy(input_t* i, int(*condition)(char), char** desc) {
+  char c = input_getc(i);
+  if (input_eof(i)) {
+    return 0;
+  }
+  return condition(c)
+    ? input_success(i, c, desc)
+    : input_failure(i, c);
+}
+
+int input_string(input_t* i, char* str, char** desc) {
+  char* s;
+  input_push(i);
+  for (s = str; *s; ++s) {
+    if (!input_char(i, *s, 0)) {
+      input_pop(i, 1);
+      return 0;
+    }
+  }
+  input_pop(i, 0);
+  if (desc) {
+    *desc = arena_alloc(&i->arena, strlen(str) + 1);
+    if (*desc) {
+      strcpy(*desc, str);
+    }
+  }
+  return 1;
+}
+
+#endif /* OLI_INPUT */
 /* --------------------------------------------------------------------- */
 #endif /* OLI_IMPLEMENTATION */
