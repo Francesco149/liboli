@@ -1,42 +1,42 @@
 #!/bin/sh
 
 build_n_run() {
-    ./build || exit $?
+  ./build || exit $?
 
-    dir="`dirname "$0"`"
-    abspath=`realpath "$dir"`
+  dir="`dirname "$0"`"
+  abspath=`realpath "$dir"`
 
-    . "$dir"/cflags
-    cflags="$cflags -I$abspath -L$abspath"
-    ldflags="$ldflags -loli"
+  . "$dir"/cflags
+  cflags="$cflags -I$abspath -L$abspath"
+  ldflags="$ldflags -loli"
 
-    for f in $abspath/tests/*.c; do
-        exedir=`dirname $f`
-        pushd $exedir 2>&1 >/dev/null
-        exename=`basename $f | sed s/.c//g`
-        echo "-----------------------------------------"
-        echo ":: $exename (shared) $CFLAGS"
-        echo ""
-        $cc $cflags `basename $f` $ldflags -o $exename
-        popd 2>&1 >/dev/null
-        LD_LIBRARY_PATH=. $exedir/$exename || exit $?
-    done
+  for f in $abspath/tests/*.c; do
+    exedir=`dirname $f`
+    pushd $exedir 2>&1 >/dev/null
+    exename=`basename $f | sed s/.c//g`
+    echo "-----------------------------------------"
+    echo ":: $exename (shared) $CFLAGS"
+    echo ""
+    $cc $cflags `basename $f` $ldflags -o $exename
+    popd 2>&1 >/dev/null
+    LD_LIBRARY_PATH=. $exedir/$exename || exit $?
+  done
 
-    . "$dir"/cflags
-    cflags="$cflags -I$abspath -DOLI_IMPLEMENTATION"
+  . "$dir"/cflags
+  cflags="$cflags -I$abspath -DOLI_IMPLEMENTATION"
 
-    for f in $abspath/tests/*.c; do
-        exedir=`dirname $f`
-        pushd $exedir 2>&1 >/dev/null
-        exename=`basename $f | sed s/.c//g`
-        exename="${exename}_s"
-        echo "-----------------------------------------"
-        echo ":: $exename (static) $CFLAGS"
-        echo ""
-        $cc $cflags `basename $f` $ldflags -o $exename
-        popd 2>&1 >/dev/null
-        $exedir/$exename || exit $?
-    done
+  for f in $abspath/tests/*.c; do
+    exedir=`dirname $f`
+    pushd $exedir 2>&1 >/dev/null
+    exename=`basename $f | sed s/.c//g`
+    exename="${exename}_s"
+    echo "-----------------------------------------"
+    echo ":: $exename (static) $CFLAGS"
+    echo ""
+    $cc $cflags `basename $f` $ldflags -o $exename
+    popd 2>&1 >/dev/null
+    $exedir/$exename || exit $?
+  done
 }
 
 CFLAGS=-m32 build_n_run || exit $?

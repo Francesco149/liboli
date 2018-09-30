@@ -21,7 +21,7 @@ which $cc >/dev/null 2>&1 || cc=gcc
 which $cc >/dev/null 2>&1 || cc=clang
 
 if [ ! which $cc >/dev/null 2>&1 ]; then
-    >&2 echo "can't find any compiler, please specify CC"
+  >&2 echo "can't find any compiler, please specify CC"
 fi
 
 uname -a > flags.log

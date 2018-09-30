@@ -58,10 +58,10 @@
 #define pp_stringify(x) pp_stringify1(x)
 
 #define OLI_VERSION_STR \
-    "liboli-" \
-    pp_stringify(OLI_MAJOR) "." \
-    pp_stringify(OLI_MINOR) "." \
-    pp_stringify(OLI_PATCH)
+  "liboli-" \
+  pp_stringify(OLI_MAJOR) "." \
+  pp_stringify(OLI_MINOR) "." \
+  pp_stringify(OLI_PATCH)
 
 #ifdef OLI_INTERN
 #define OLI_MAP
@@ -96,19 +96,19 @@
 
 /* prints "milliseconds.microseconds [file:line] message\n" */
 #define logln \
-    log_print_header(__FILE__, __LINE__), \
-    log_println
+  log_print_header(__FILE__, __LINE__), \
+  log_println
 
 /* calls log("x=fmt", x) */
 #define log_dump(fmt, x) \
-    logln(#x "=" fmt, x)
+  logln(#x "=" fmt, x)
 
 #define logs(str) \
-    logln("%s", str)
+  logln("%s", str)
 
 /* not thread safe */
 #define log_errno(msg) \
-    logln("%s: %s", msg, strerror(errno))
+  logln("%s: %s", msg, strerror(errno))
 
 void log_print_header(char const* file, int line);
 void log_printf(char* fmt, ...);
@@ -130,41 +130,41 @@ void log_println(char* fmt, ...);
  */
 
 #define def_array2(type, name) \
-    typedef struct { \
-        int cap; \
-        int len; \
-        type* data; \
-    } name##_array_t
+  typedef struct { \
+    int cap; \
+    int len; \
+    type* data; \
+  } name##_array_t
 
 #define def_array(type) def_array2(type, type)
 #define def_array_t(type) def_array2(type##_t, type)
 
 #define array_reserve(arr, n) \
-    array_reserve_i(n, array_unpack(arr))
+  array_reserve_i(n, array_unpack(arr))
 
 #define array_free(arr) \
-    array_free_i(array_unpack(arr))
+  array_free_i(array_unpack(arr))
 
 #define array_append(arr, x) \
-    (array_reserve((arr), (arr)->len + 1) \
-        ? ((arr)->data[(arr)->len++] = (x), 1) \
-        : 0)
+  (array_reserve((arr), (arr)->len + 1) \
+    ? ((arr)->data[(arr)->len++] = (x), 1) \
+    : 0)
 
 #define array_cat(arr, x, n) do { \
-    if (array_reserve(arr, (arr)->len + (n))) { \
-        int _i = 0; \
-        for (_i = 0; _i < (n); ++_i) { \
-            (arr)->data[(arr)->len++] = (x)[_i]; \
-        } \
+  if (array_reserve(arr, (arr)->len + (n))) { \
+    int _i = 0; \
+    for (_i = 0; _i < (n); ++_i) { \
+      (arr)->data[(arr)->len++] = (x)[_i]; \
     } \
+  } \
 } while (0)
 
 /* internal helpers, not to be used directly */
 #define array_unpack(arr) \
-    &(arr)->cap, \
-    &(arr)->len, \
-    (void**)&(arr)->data, \
-    (int)sizeof((arr)->data[0])
+  &(arr)->cap, \
+  &(arr)->len, \
+  (void**)&(arr)->data, \
+  (int)sizeof((arr)->data[0])
 
 int array_reserve_i(int n, int* cap, int* len, void** data, int esize);
 void array_free_i(int* cap, int* len, void** data, int esize);
@@ -183,8 +183,8 @@ void array_free_i(int* cap, int* len, void** data, int esize);
 /* points to a range within a string, doesn't have to be zero-terminated */
 
 typedef struct {
-    char* start;
-    char* end;
+  char* start;
+  char* end;
 } string_t;
 
 void string_from_range(string_t* s, char* start, char* end);
@@ -221,10 +221,10 @@ int hash_int32(int x);
  */
 
 typedef struct {
-    int* keys;
-    void** values;
-    int cap;
-    int len;
+  int* keys;
+  void** values;
+  int cap;
+  int len;
 } map_t;
 
 void map_free(map_t* map);
@@ -240,9 +240,13 @@ int map_geti(map_t* map, int key);
 
 /* various bitwise utilities */
 
-/* aligns x to a power-of-two value a */
-#define bit_align_down(x, a) ((x) & ~((a) - 1))
-#define bit_align_up(x, a) bit_align_down((x) + (a) - 1, a)
+/* aligns x down to a power-of-two value a */
+#define bit_align_down(x, a) \
+  ((x) & ~((a) - 1))
+
+/* aligns x up to a power-of-two value a */
+#define bit_align_up(x, a) \
+  bit_align_down((x) + (a) - 1, a)
 
 /* closest higher power of two for a 32-bit int. returns 0 for x=0 */
 int bit_po2_up(int x);
@@ -267,9 +271,9 @@ typedef char* pchar_t;
 def_array_t(pchar);
 
 typedef struct {
-    char* block;
-    char* end_of_block;
-    pchar_array_t blocks;
+  char* block;
+  char* end_of_block;
+  pchar_array_t blocks;
 } arena_t;
 
 /* ensures that there are at least min_size bytes reserved */
@@ -299,13 +303,13 @@ void arena_free(arena_t* arena);
  *
  * // hopefully you are comparing against keyword_while many times
  * if (intern_str(&interns, str) == keyword_while) {
- *     // ...
+ *   // ...
  * }
  */
 
 typedef struct {
-    arena_t arena;
-    map_t map;
+  arena_t arena;
+  map_t map;
 } interns_t;
 
 char* intern_range(interns_t* interns, char* start, char* end);
@@ -329,27 +333,27 @@ char* intern_str(interns_t* interns, char* str);
 #include <time.h>
 
 void log_print_header(char const* file, int line) {
-    int olderr = errno;
-    unsigned t = (unsigned)clock();
-    unsigned ms = t / (CLOCKS_PER_SEC / 1000);
-    unsigned us = t / (CLOCKS_PER_SEC / 1000000);
-    log_printf("%07u.%07u [%s:%d] ", ms, us, file, line);
-    errno = olderr; /* allows log_errno to work */
+  int olderr = errno;
+  unsigned t = (unsigned)clock();
+  unsigned ms = t / (CLOCKS_PER_SEC / 1000);
+  unsigned us = t / (CLOCKS_PER_SEC / 1000000);
+  log_printf("%07u.%07u [%s:%d] ", ms, us, file, line);
+  errno = olderr; /* allows log_errno to work */
 }
 
 void log_printf(char* fmt, ...) {
-    va_list va;
-    va_start(va, fmt);
-    vfprintf(stderr, fmt, va);
-    va_end(va);
+  va_list va;
+  va_start(va, fmt);
+  vfprintf(stderr, fmt, va);
+  va_end(va);
 }
 
 void log_println(char* fmt, ...) {
-    va_list va;
-    va_start(va, fmt);
-    vfprintf(stderr, fmt, va);
-    va_end(va);
-    fputc('\n', stderr);
+  va_list va;
+  va_start(va, fmt);
+  vfprintf(stderr, fmt, va);
+  va_end(va);
+  fputc('\n', stderr);
 }
 
 #endif /* OLI_LOG */
@@ -363,26 +367,26 @@ void log_println(char* fmt, ...) {
  */
 
 int array_reserve_i(int n, int* cap, int* len, void** data, int esize) {
-    (void)len;
-    if (*cap <= n) {
-        void* newdata;
-        int newcap = *cap ? *cap * 2 : 16;
-        newdata = realloc(*data, esize * newcap);
-        if (!newdata) {
-            return 0;
-        }
-        *data = newdata;
-        *cap = newcap;
+  (void)len;
+  if (*cap <= n) {
+    void* newdata;
+    int newcap = *cap ? *cap * 2 : 16;
+    newdata = realloc(*data, esize * newcap);
+    if (!newdata) {
+      return 0;
     }
-    return 1;
+    *data = newdata;
+    *cap = newcap;
+  }
+  return 1;
 }
 
 void array_free_i(int* cap, int* len, void** data, int esize) {
-    (void)esize;
-    free(*data);
-    *cap = 0;
-    *len = 0;
-    *data = 0;
+  (void)esize;
+  free(*data);
+  *cap = 0;
+  *len = 0;
+  *data = 0;
 }
 
 #endif /* OLI_ARRAY */
@@ -392,68 +396,68 @@ void array_free_i(int* cap, int* len, void** data, int esize) {
 #include <string.h>
 
 void string_from_range(string_t* s, char* start, char* end) {
-    s->start = start;
-    s->end = end;
+  s->start = start;
+  s->end = end;
 }
 
 void string_from_c(string_t* s, char* str) {
-    s->start = str;
-    s->end = s->start + (s->start ? strlen(s->start) : 0);
+  s->start = str;
+  s->end = s->start + (s->start ? strlen(s->start) : 0);
 }
 
 int string_len(string_t* s) {
-    return s->end - s->start;
+  return s->end - s->start;
 }
 
 char* string_dup_c(string_t* s) {
-    int len = string_len(s);
-    char* res = (char*)malloc(len + 1);
-    if (res) {
-        memcpy(res, s->start, len);
-        res[len] = 0;
-    }
-    return res;
+  int len = string_len(s);
+  char* res = (char*)malloc(len + 1);
+  if (res) {
+    memcpy(res, s->start, len);
+    res[len] = 0;
+  }
+  return res;
 }
 
 void string_dup(string_t* dst, string_t* src) {
-    string_from_range(dst, src->start, src->end);
+  string_from_range(dst, src->start, src->end);
 }
 
 int string_cmp(string_t* s1, string_t* s2) {
-    int len1 = string_len(s1);
-    int len2 = string_len(s2);
-    if (len1 > len2) {
-        return 1;
-    } else if (len1 < len2) {
-        return -1;
-    }
-    return strncmp(s1->start, s2->start, len1);
+  int len1 = string_len(s1);
+  int len2 = string_len(s2);
+  if (len1 > len2) {
+    return 1;
+  } else if (len1 < len2) {
+    return -1;
+  }
+  return strncmp(s1->start, s2->start, len1);
 }
 
 int string_cmp_c(string_t* s, char* str) {
-    string_t s2;
-    string_from_c(&s2, str);
-    return string_cmp(s, &s2);
+  string_t s2;
+  string_from_c(&s2, str);
+  return string_cmp(s, &s2);
 }
 
 int string_spn(string_t* s, char* accept) {
-    char* p;
-    for (p = s->start; p < s->end; ++p) {
-        if (!strchr(accept, *p)) {
-            break;
-        }
+  char* p;
+  for (p = s->start; p < s->end; ++p) {
+    if (!strchr(accept, *p)) {
+      break;
     }
-    return p - s->start;
+  }
+  return p - s->start;
 }
 
 int string_cspn(string_t* s, char* reject) {
-    char* p;
-    for (p = s->start; p < s->end; ++p) {
-        if (strchr(reject, *p)) {
-            break;
-        }
+  char* p;
+  for (p = s->start; p < s->end; ++p) {
+    if (strchr(reject, *p)) {
+      break;
     }
-    return p - s->start;
+  }
+  return p - s->start;
 }
 
 #endif /* OLI_STRING */
@@ -461,21 +465,21 @@ int string_cspn(string_t* s, char* reject) {
 #if defined(OLI_HASH) || defined(OLI_ALL)
 
 int hash_fnv32(void* data, int len) {
-    int i;
-    char* p = (char*)data;
-    int x = 0x811c9dc5;
-    for (i = 0; i < len; ++i) {
-        x ^= p[i];
-        x *= 0x1000193;
-        x ^= x >> 16;
-    }
-    return x;
+  int i;
+  char* p = (char*)data;
+  int x = 0x811c9dc5;
+  for (i = 0; i < len; ++i) {
+    x ^= p[i];
+    x *= 0x1000193;
+    x ^= x >> 16;
+  }
+  return x;
 }
 
 int hash_int32(int x) {
-    x *= 0x85ebca6b;
-    x ^= x >> 16;
-    return x;
+  x *= 0x85ebca6b;
+  x ^= x >> 16;
+  return x;
 }
 
 #endif /* OLI_HASH */
@@ -484,92 +488,92 @@ int hash_int32(int x) {
 #include <stdlib.h>
 
 void map_free(map_t* map) {
-    free(map->keys);
-    free(map->values);
-    map->keys = 0;
-    map->values = 0;
-    map->cap = 0;
-    map->len = 0;
+  free(map->keys);
+  free(map->values);
+  map->keys = 0;
+  map->values = 0;
+  map->cap = 0;
+  map->len = 0;
 }
 
 int map_reserve(map_t* map, int new_cap) {
-    int i;
-    map_t new_map;
-    new_cap = al_max(16, new_cap);
-    new_map.len = 0;
-    new_map.cap = new_cap;
-    new_map.keys = (int*)calloc(new_cap, sizeof(int));
-    new_map.values = (void**)malloc(new_cap * sizeof(void*));
-    if (!new_map.keys || !new_map.values) {
-        free(new_map.keys);
-        free(new_map.values);
-        return 0;
+  int i;
+  map_t new_map;
+  new_cap = al_max(16, new_cap);
+  new_map.len = 0;
+  new_map.cap = new_cap;
+  new_map.keys = (int*)calloc(new_cap, sizeof(int));
+  new_map.values = (void**)malloc(new_cap * sizeof(void*));
+  if (!new_map.keys || !new_map.values) {
+    free(new_map.keys);
+    free(new_map.values);
+    return 0;
+  }
+  for (i = 0; i < map->cap; ++i) {
+    if (map->keys[i]) {
+      map_set(&new_map, map->keys[i], map->values[i]);
     }
-    for (i = 0; i < map->cap; ++i) {
-        if (map->keys[i]) {
-            map_set(&new_map, map->keys[i], map->values[i]);
-        }
-    }
-    free(map->keys);
-    free(map->values);
-    *map = new_map;
-    return 1;
+  }
+  free(map->keys);
+  free(map->values);
+  *map = new_map;
+  return 1;
 }
 
 int map_set(map_t* map, int key, void* value) {
-    int i, j;
-    int hash = hash_int32(key ? key : 1);
-    if (2*map->len >= map->cap) {
-        map_reserve(map, 2*map->cap);
-    }
-    if (map->len >= map->cap - 1) {
-        return 0;
-    }
-    i = hash;
-    for (j = 0; j < map->cap; ++j, ++i) {
-        i &= map->cap - 1;
-        if (!map->keys[i]) {
-            map->keys[i] = key;
-            map->values[i] = value;
-            ++map->len;
-            return 1;
-        } else if (map->keys[i] == key) {
-            if (value) {
-                map->values[i] = value;
-            } else {
-                map->keys[i] = 0;
-                --map->len;
-            }
-            return 1;
-        }
-    }
+  int i, j;
+  int hash = hash_int32(key ? key : 1);
+  if (2*map->len >= map->cap) {
+    map_reserve(map, 2*map->cap);
+  }
+  if (map->len >= map->cap - 1) {
     return 0;
+  }
+  i = hash;
+  for (j = 0; j < map->cap; ++j, ++i) {
+    i &= map->cap - 1;
+    if (!map->keys[i]) {
+      map->keys[i] = key;
+      map->values[i] = value;
+      ++map->len;
+      return 1;
+    } else if (map->keys[i] == key) {
+      if (value) {
+        map->values[i] = value;
+      } else {
+        map->keys[i] = 0;
+        --map->len;
+      }
+      return 1;
+    }
+  }
+  return 0;
 }
 
 int map_seti(map_t* map, int key, int value) {
-    return map_set(map, key, (void*)(long)value);
+  return map_set(map, key, (void*)(long)value);
 }
 
 void* map_get(map_t* map, int key) {
-    int i;
-    int hash = hash_int32(key);
-    if (!map->cap) {
-        return 0;
-    }
-    for (i = hash; ; ++i) {
-        i &= map->cap - 1;
-        if (map->keys[i] == key) {
-            return map->values[i];
-        } else if (!map->keys[i]) {
-            /* assuming the map always has at least 1 free slot */
-            break;
-        }
-    }
+  int i;
+  int hash = hash_int32(key);
+  if (!map->cap) {
     return 0;
+  }
+  for (i = hash; ; ++i) {
+    i &= map->cap - 1;
+    if (map->keys[i] == key) {
+      return map->values[i];
+    } else if (!map->keys[i]) {
+      /* assuming the map always has at least 1 free slot */
+      break;
+    }
+  }
+  return 0;
 }
 
 int map_geti(map_t* map, int key) {
-    return (int)(long)map_get(map, key);
+  return (int)(long)map_get(map, key);
 }
 
 #endif /* OLI_MAP */
@@ -577,13 +581,13 @@ int map_geti(map_t* map, int key) {
 #if defined(OLI_BIT) || defined(OLI_ALL)
 
 int bit_po2_up(int x) {
-    --x;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    return ++x;
+  --x;
+  x |= x >> 1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  return ++x;
 }
 
 #endif /* OLI_BIT */
@@ -592,41 +596,41 @@ int bit_po2_up(int x) {
 #include <stdlib.h>
 
 int arena_reserve(arena_t* arena, int min_size) {
-    int size;
-    char* new_block;
-    if (arena->end_of_block - arena->block >= min_size) {
-        return 1;
-    }
-    size = bit_align_up(al_max(min_size, ARENA_BLOCK_SIZE), ARENA_ALIGN);
-    new_block = malloc(size);
-    if (!new_block) {
-        return 0;
-    }
-    arena->block = new_block;
-    arena->end_of_block = new_block + size;
-    array_append(&arena->blocks, arena->block);
+  int size;
+  char* new_block;
+  if (arena->end_of_block - arena->block >= min_size) {
     return 1;
+  }
+  size = bit_align_up(al_max(min_size, ARENA_BLOCK_SIZE), ARENA_ALIGN);
+  new_block = malloc(size);
+  if (!new_block) {
+    return 0;
+  }
+  arena->block = new_block;
+  arena->end_of_block = new_block + size;
+  array_append(&arena->blocks, arena->block);
+  return 1;
 }
 
 void* arena_alloc(arena_t* arena, int size) {
-    void* res;
-    if (!arena_reserve(arena, size)) {
-        return 0;
-    }
-    size = bit_align_up(size, ARENA_ALIGN);
-    res = arena->block;
-    arena->block += size;
-    return res;
+  void* res;
+  if (!arena_reserve(arena, size)) {
+    return 0;
+  }
+  size = bit_align_up(size, ARENA_ALIGN);
+  res = arena->block;
+  arena->block += size;
+  return res;
 }
 
 void arena_free(arena_t* arena) {
-    int i;
-    for (i = 0; i < arena->blocks.len; ++i) {
-        free(arena->blocks.data[i]);
-    }
-    array_free(&arena->blocks);
-    arena->block = 0;
-    arena->end_of_block = 0;
+  int i;
+  for (i = 0; i < arena->blocks.len; ++i) {
+    free(arena->blocks.data[i]);
+  }
+  array_free(&arena->blocks);
+  arena->block = 0;
+  arena->end_of_block = 0;
 }
 #endif
 /* --------------------------------------------------------------------- */
@@ -634,39 +638,39 @@ void arena_free(arena_t* arena) {
 #include <string.h>
 
 typedef struct intern {
-    int len;
-    struct intern* next;
-    char str[1]; /* actually len bytes */
+  int len;
+  struct intern* next;
+  char str[1]; /* actually len bytes */
 } intern_t;
 
 char* intern_range(interns_t* interns, char* start, char* end) {
-    intern_t* new_intern;
-    intern_t* it;
-    int alloc_size;
-    int len = end - start;
-    int key = hash_fnv32(start, len);
-    intern_t* first_intern = (intern_t*)map_get(&interns->map, key);
-    for (it = first_intern; it; it = it->next) {
-        if (it->len == len && !strncmp(it->str, start, len)) {
-            return it->str;
-        }
+  intern_t* new_intern;
+  intern_t* it;
+  int alloc_size;
+  int len = end - start;
+  int key = hash_fnv32(start, len);
+  intern_t* first_intern = (intern_t*)map_get(&interns->map, key);
+  for (it = first_intern; it; it = it->next) {
+    if (it->len == len && !strncmp(it->str, start, len)) {
+      return it->str;
     }
-    alloc_size = sizeof(intern_t) - sizeof(new_intern->str) + len;
-    new_intern = (intern_t*)arena_alloc(&interns->arena, alloc_size);
-    if (!new_intern) {
-        return 0;
-    }
-    new_intern->len = len;
-    new_intern->next = first_intern;
-    memcpy(new_intern->str, start, len);
-    if (!map_set(&interns->map, key, new_intern)) {
-        return 0;
-    }
-    return new_intern->str;
+  }
+  alloc_size = sizeof(intern_t) - sizeof(new_intern->str) + len;
+  new_intern = (intern_t*)arena_alloc(&interns->arena, alloc_size);
+  if (!new_intern) {
+    return 0;
+  }
+  new_intern->len = len;
+  new_intern->next = first_intern;
+  memcpy(new_intern->str, start, len);
+  if (!map_set(&interns->map, key, new_intern)) {
+    return 0;
+  }
+  return new_intern->str;
 }
 
 char* intern_str(interns_t* interns, char* str) {
-    return intern_range(interns, str, str + strlen(str));
+  return intern_range(interns, str, str + strlen(str));
 }
 
 #endif /* OLI_INTERN */
