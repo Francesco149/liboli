@@ -386,7 +386,7 @@ int input_string(input_t* i, char* str, char** desc);
 
 #define OLI_MAJOR 5
 #define OLI_MINOR 1
-#define OLI_PATCH 0
+#define OLI_PATCH 1
 
 #define pp_stringify1(x) #x
 #define pp_stringify(x) pp_stringify1(x)
@@ -769,7 +769,7 @@ char* intern_str(interns_t* interns, char* str) {
 #include <string.h>
 
 void input_free(input_t* i) {
-  if (i->arena) {
+  if (i->arena && i->arena != & i->builtin_arena) {
     arena_free(i->arena);
   }
   arena_free(&i->builtin_arena);
