@@ -276,6 +276,7 @@ typedef struct {
 /* ensures that there are at least min_size bytes reserved */
 int arena_reserve(arena_t* arena, int min_size);
 void* arena_alloc(arena_t* arena, int size);
+void* arena_calloc(arena_t* arena, int size);
 void arena_free(arena_t* arena);
 
 #endif
@@ -384,7 +385,7 @@ int input_string(input_t* i, char* str, char** desc);
 #ifdef OLI_IMPLEMENTATION
 
 #define OLI_MAJOR 5
-#define OLI_MINOR 0
+#define OLI_MINOR 1
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
@@ -675,6 +676,7 @@ int bit_po2_up(int x) {
 /* --------------------------------------------------------------------- */
 #if defined(OLI_ARENA) || defined(OLI_ALL)
 #include <stdlib.h>
+#include <string.h>
 
 int arena_reserve(arena_t* arena, int min_size) {
   int size;
@@ -701,6 +703,12 @@ void* arena_alloc(arena_t* arena, int size) {
   size = bit_align_up(size, ARENA_ALIGN);
   res = arena->block;
   arena->block += size;
+  return res;
+}
+
+void* arena_calloc(arena_t* arena, int size) {
+  void* res = arena_alloc(arena, size);
+  memset(res, 0, size);
   return res;
 }
 

@@ -15,6 +15,7 @@ int main() {
   int* p;
   char* first_block;
   char* first_block_end;
+  int* zerod;
   for (i = 0; i < LOOPS; ++i) {
     p = arena_alloc(&arena, sizeof(int) * i);
     if (!i) {
@@ -27,10 +28,19 @@ int main() {
     }
     array_append(&arrays, p);
   }
+  zerod = arena_calloc(&arena, sizeof(int) * LOOPS);
+  for (i = 0; i < LOOPS / 2; ++i) {
+    zerod[i] = i;
+  }
   for (i = 0; i < LOOPS; ++i) {
     p = arrays.data[i];
     for (j = 0; j < i; ++j) {
       test_assert(p[j] == j)
+    }
+    if (i < LOOPS / 2) {
+      test_assert(zerod[i] == i);
+    } else {
+      test_assert(zerod[i] == 0);
     }
   }
   test_assert((char*)p < first_block || (char*)p >= first_block_end)
