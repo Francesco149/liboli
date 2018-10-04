@@ -346,7 +346,8 @@ typedef struct {
     string_t string;
     FILE* file;
   } data;
-  arena_t arena;
+  arena_t* arena;
+  arena_t builtin_arena;
   char* filename;
   int col;
   int row;
@@ -382,8 +383,8 @@ int input_string(input_t* i, char* str, char** desc);
 
 #ifdef OLI_IMPLEMENTATION
 
-#define OLI_MAJOR 4
-#define OLI_MINOR 3
+#define OLI_MAJOR 5
+#define OLI_MINOR 0
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
@@ -760,7 +761,10 @@ char* intern_str(interns_t* interns, char* str) {
 #include <string.h>
 
 void input_free(input_t* i) {
-  arena_free(&i->arena);
+  if (i->arena) {
+    arena_free(i->arena);
+  }
+  arena_free(&i->builtin_arena);
   array_free(&i->pos_stack);
   array_free(&i->backtrack);
 }
@@ -783,6 +787,7 @@ void input_pop(input_t* i, int rewind) {
 
 void input_init(input_t* i) {
   memset(i, 0, sizeof(input_t));
+  i->arena = &i->builtin_arena;
   i->filename = "<anonymous>";
   array_append(&i->pos_stack, 0);
 }
@@ -854,7 +859,7 @@ int input_success(input_t* i, char c, char** desc) {
   }
   ++i->pos_stack.data[top];
   if (desc) {
-    *desc = arena_alloc(&i->arena, 2);
+    *desc = arena_alloc(i->arena, 2);
     if (*desc) {
       (*desc)[0] = c;
       (*desc)[1] = 0;
@@ -942,7 +947,7 @@ int input_string(input_t* i, char* str, char** desc) {
   }
   input_pop(i, 0);
   if (desc) {
-    *desc = arena_alloc(&i->arena, strlen(str) + 1);
+    *desc = arena_alloc(i->arena, strlen(str) + 1);
     if (*desc) {
       strcpy(*desc, str);
     }
