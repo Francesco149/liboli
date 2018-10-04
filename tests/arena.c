@@ -16,6 +16,8 @@ int main() {
   char* first_block;
   char* first_block_end;
   int* zerod;
+  char* blah = "test";
+  char* test;
   for (i = 0; i < LOOPS; ++i) {
     p = arena_alloc(&arena, sizeof(int) * i);
     if (!i) {
@@ -43,6 +45,9 @@ int main() {
       test_assert(zerod[i] == 0);
     }
   }
+  test = arena_strdup(&arena, blah);
+  test_assert(test != blah);
+  test_assert(!strcmp(test, blah));
   test_assert((char*)p < first_block || (char*)p >= first_block_end)
   arena_free(&arena);
   logln("passed");

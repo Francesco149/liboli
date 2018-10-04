@@ -277,6 +277,7 @@ typedef struct {
 int arena_reserve(arena_t* arena, int min_size);
 void* arena_alloc(arena_t* arena, int size);
 void* arena_calloc(arena_t* arena, int size);
+char* arena_strdup(arena_t* m, char* s);
 void arena_free(arena_t* arena);
 
 #endif
@@ -385,7 +386,7 @@ int input_string(input_t* i, char* str, char** desc);
 #ifdef OLI_IMPLEMENTATION
 
 #define OLI_MAJOR 6
-#define OLI_MINOR 0
+#define OLI_MINOR 1
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
@@ -709,6 +710,14 @@ void* arena_alloc(arena_t* arena, int size) {
 void* arena_calloc(arena_t* arena, int size) {
   void* res = arena_alloc(arena, size);
   memset(res, 0, size);
+  return res;
+}
+
+char* arena_strdup(arena_t* m, char* s) {
+  char* res = arena_alloc(m, strlen(s) + 1);
+  if (res) {
+    strcpy(res, s);
+  }
   return res;
 }
 
