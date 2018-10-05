@@ -379,7 +379,7 @@ int input_string(input_t* i, char* str, char** desc);
 
 #ifdef OLI_IMPLEMENTATION
 
-#define OLI_MAJOR 7
+#define OLI_MAJOR 8
 #define OLI_MINOR 0
 #define OLI_PATCH 0
 
@@ -863,8 +863,8 @@ int input_success(input_t* i, char c, char** desc) {
     if (i->type == I_STRING) {
       ++i->data.string.start;
     }
-    i->last = c;
   }
+  i->last = c;
   ++i->pos_stack.data[top];
   if (desc) {
     *desc = arena_alloc(i->arena, 2);
