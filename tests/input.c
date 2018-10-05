@@ -8,6 +8,14 @@ int alpha(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
+int soi(char prev, char next) {
+  return !prev && next;
+}
+
+int eoi(char prev, char next) {
+  return prev && !next;
+}
+
 FILE* f;
 char* desc;
 input_t i;
@@ -15,6 +23,9 @@ char buf[512];
 
 int main() {
   input_from_string(&i, "hello world tHiS is a parser!");
+  test_assert(input_boundary(&i, soi));
+  test_assert(!input_boundary(&i, eoi));
+  test_assert(input_peekc(&i) == 'h');
   test_assert(input_any(&i, &desc));
   test_assert(!strcmp(desc, "h"));
   test_assert(input_char(&i, 'e', &desc));
@@ -56,7 +67,9 @@ int main() {
   test_assert(!strcmp(desc, " "));
   test_assert(input_string(&i, "is", &desc));
   test_assert(!strcmp(desc, "is"));
+  test_assert(input_peekc(&i) == ' ');
   test_assert(!input_string(&i, "memes", &desc));
+  test_assert(input_peekc(&i) == ' ');
   test_assert(input_any(&i, &desc));
   test_assert(!strcmp(desc, " "));
   test_assert(input_any(&i, &desc));
@@ -68,23 +81,36 @@ int main() {
   test_assert(!input_string(&i, "parzer", &desc));
   test_assert(input_string(&i, "parser!", &desc));
   test_assert(!strcmp(desc, "parser!"));
-  test_assert(input_eof(&i));
   test_assert(i.backtrack.len == 7);
+  test_assert(i.pos_stack.len == 1);
+  test_assert(!input_boundary(&i, soi));
+  test_assert(input_boundary(&i, eoi));
+  test_assert(input_eof(&i));
+  test_assert(i.backtrack.len == 0);
   test_assert(i.pos_stack.len == 1);
   input_free(&i);
 
   test_assert(f = fopen("tests/input.c", "rb"));
   input_from_file(&i, f);
+  test_assert(input_boundary(&i, soi));
+  test_assert(!input_boundary(&i, eoi));
   test_assert(input_string(&i, "#define", &desc));
   test_assert(!strcmp(desc, "#define"));
   test_assert(input_any(&i, &desc));
   test_assert(!strcmp(desc, " "));
+  test_assert(input_peekc(&i) == 'O');
   test_assert(!input_string(&i, "memes", &desc));
+  test_assert(input_peekc(&i) == 'O');
   test_assert(!input_string(&i, "OLE", &desc));
+  test_assert(input_peekc(&i) == 'O');
   test_assert(!input_string(&i, "OLI_INBUTT", &desc));
+  test_assert(input_peekc(&i) == 'O');
   test_assert(input_string(&i, "OLI_INPUT", &desc));
   test_assert(!strcmp(desc, "OLI_INPUT"));
   test_assert(i.backtrack.len == 9);
+  test_assert(i.pos_stack.len == 1);
+  test_assert(input_peekc(&i) == '\n');
+  test_assert(i.backtrack.len == 0);
   test_assert(i.pos_stack.len == 1);
   input_state_str(&i, buf);
   test_assert(!strcmp(buf, "<anonymous>:1,18"));
@@ -97,6 +123,10 @@ int main() {
   test_assert(input_any(&i, &desc));
   test_assert(!strcmp(desc, " "));
   test_assert(i.backtrack.len == 1);
+  test_assert(i.pos_stack.len == 1);
+  test_assert(!input_boundary(&i, soi));
+  test_assert(!input_boundary(&i, eoi));
+  test_assert(i.backtrack.len == 0);
   test_assert(i.pos_stack.len == 1);
 
   return 0;

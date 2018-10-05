@@ -364,6 +364,7 @@ void input_from_range(input_t* i, char* start, char* end);
 void input_from_file(input_t* i, FILE* f);
 int input_state_str(input_t* i, char* buf);
 char input_getc(input_t* i);
+char input_peekc(input_t* i);
 int input_eof(input_t* i);
 int input_any(input_t* i, char** desc);
 int input_char(input_t* i, char expected, char** desc);
@@ -372,6 +373,7 @@ int input_one_of(input_t* i, char* charset, char** desc);
 int input_none_of(input_t* i, char* charset, char** desc);
 int input_satisfy(input_t* i, int(*condition)(char), char** desc);
 int input_string(input_t* i, char* str, char** desc);
+int input_boundary(input_t* i, int(*condition)(char last, char next));
 
 #endif /* OLI_INPUT */
 /* --------------------------------------------------------------------- */
@@ -384,7 +386,7 @@ int input_string(input_t* i, char* str, char** desc);
 #ifdef OLI_IMPLEMENTATION
 
 #define OLI_MAJOR 9
-#define OLI_MINOR 0
+#define OLI_MINOR 1
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
@@ -853,6 +855,18 @@ char input_getc(input_t* i) {
   return 0;
 }
 
+char input_peekc(input_t* i) {
+  input_pos_t* pos = input_top(i);
+  char c = input_getc(i);
+  if (input_eof(i)) {
+    return 0;
+  }
+  if (i->type == I_FILE && pos->index >= i->backtrack.len) {
+    ungetc(c, i->data.file);
+  }
+  return c;
+}
+
 int input_eof(input_t* i) {
   switch (i->type) {
     case I_STRING: return string_len(&i->data.string) <= 0;
@@ -972,6 +986,11 @@ int input_string(input_t* i, char* str, char** desc) {
     }
   }
   return 1;
+}
+
+int input_boundary(input_t* i, int(*condition)(char last, char next)) {
+  input_pos_t* top = input_top(i);
+  return condition(top->last, input_peekc(i));
 }
 
 #endif /* OLI_INPUT */
