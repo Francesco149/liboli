@@ -264,13 +264,10 @@ int bit_po2_up(int x);
 #define ARENA_ALIGN sizeof(void*)
 #define ARENA_BLOCK_SIZE (1024 * 1024)
 
-typedef char* pchar_t;
-def_array_t(pchar);
-
 typedef struct {
   char* block;
   char* end_of_block;
-  pchar_array_t blocks;
+  array_t(char*) blocks;
 } arena_t;
 
 /* ensures that there are at least min_size bytes reserved */
@@ -339,9 +336,6 @@ char* intern_str(interns_t* interns, char* str);
 
 enum { I_STRING, I_FILE };
 
-def_array(int);
-def_array(char);
-
 typedef struct {
   int type;
   union {
@@ -354,8 +348,8 @@ typedef struct {
   int col;
   int row;
   char last;
-  int_array_t pos_stack;
-  char_array_t backtrack;
+  array_t(int) pos_stack;
+  array_t(char) backtrack;
 } input_t;
 
 void input_free(input_t* i);
@@ -385,8 +379,8 @@ int input_string(input_t* i, char* str, char** desc);
 
 #ifdef OLI_IMPLEMENTATION
 
-#define OLI_MAJOR 6
-#define OLI_MINOR 1
+#define OLI_MAJOR 7
+#define OLI_MINOR 0
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
