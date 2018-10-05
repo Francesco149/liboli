@@ -337,6 +337,13 @@ char* intern_str(interns_t* interns, char* str);
 enum { I_STRING, I_FILE };
 
 typedef struct {
+  int index;
+  int col;
+  int row;
+  char last;
+} input_pos_t;
+
+typedef struct {
   int type;
   union {
     string_t string;
@@ -345,10 +352,7 @@ typedef struct {
   arena_t* arena;
   arena_t builtin_arena;
   char* filename;
-  int col;
-  int row;
-  char last;
-  array_t(int) pos_stack;
+  array_t(input_pos_t) pos_stack;
   array_t(char) backtrack;
 } input_t;
 
@@ -379,7 +383,7 @@ int input_string(input_t* i, char* str, char** desc);
 
 #ifdef OLI_IMPLEMENTATION
 
-#define OLI_MAJOR 8
+#define OLI_MAJOR 9
 #define OLI_MINOR 0
 #define OLI_PATCH 0
 
@@ -777,9 +781,14 @@ void input_free(input_t* i) {
   array_free(&i->backtrack);
 }
 
-void input_push(input_t* i) {
+input_pos_t* input_top(input_t* i) {
   int top = i->pos_stack.len - 1;
-  array_append(&i->pos_stack, i->pos_stack.data[top]);
+  return &i->pos_stack.data[top];
+}
+
+void input_push(input_t* i) {
+  input_pos_t* top = input_top(i);
+  array_append(&i->pos_stack, *top);
 }
 
 void input_pop(input_t* i, int rewind) {
@@ -794,10 +803,12 @@ void input_pop(input_t* i, int rewind) {
 }
 
 void input_init(input_t* i) {
+  input_pos_t zero_pos;
+  memset(&zero_pos, 0, sizeof(zero_pos));
   memset(i, 0, sizeof(input_t));
   i->arena = &i->builtin_arena;
   i->filename = "<anonymous>";
-  array_append(&i->pos_stack, 0);
+  array_append(&i->pos_stack, zero_pos);
 }
 
 void input_from_string(input_t* i, char* s) {
@@ -819,19 +830,19 @@ void input_from_file(input_t* i, FILE* f) {
 }
 
 int input_state_str(input_t* i, char* buf) {
-  return sprintf(buf, "%s:%d,%d", i->filename, i->row + 1, i->col + 1);
+  input_pos_t* pos = input_top(i);
+  return sprintf(buf, "%s:%d,%d", i->filename, pos->row + 1, pos->col + 1);
 }
 
 char input_getc(input_t* i) {
-  int top = i->pos_stack.len - 1;
-  int pos = i->pos_stack.data[top];
-  if (pos < i->backtrack.len) {
-    return i->backtrack.data[pos];
+  input_pos_t* pos = input_top(i);
+  if (pos->index < i->backtrack.len) {
+    return i->backtrack.data[pos->index];
   }
-  if (i->pos_stack.data[0] >= i->backtrack.len) {
+  if (i->pos_stack.data[0].index >= i->backtrack.len) {
     int j;
     for (j = 0; j < i->pos_stack.len; ++j) {
-      i->pos_stack.data[j] -= i->backtrack.len;
+      i->pos_stack.data[j].index -= i->backtrack.len;
     }
     i->backtrack.len = 0;
   }
@@ -851,21 +862,21 @@ int input_eof(input_t* i) {
 }
 
 int input_success(input_t* i, char c, char** desc) {
-  int top = i->pos_stack.len - 1;
-  if (i->pos_stack.data[top] >= i->backtrack.len) {
+  input_pos_t* pos = input_top(i);
+  if (pos->index >= i->backtrack.len) {
     array_append(&i->backtrack, c);
-    if (c == '\n') {
-      ++i->row;
-      i->col = 0;
-    } else {
-      ++i->col;
-    }
     if (i->type == I_STRING) {
       ++i->data.string.start;
     }
   }
-  i->last = c;
-  ++i->pos_stack.data[top];
+  ++pos->index;
+  if (c == '\n') {
+    ++pos->row;
+    pos->col = 0;
+  } else {
+    ++pos->col;
+  }
+  pos->last = c;
   if (desc) {
     *desc = arena_alloc(i->arena, 2);
     if (*desc) {
@@ -878,8 +889,8 @@ int input_success(input_t* i, char c, char** desc) {
 
 int input_failure(input_t* i, char c) {
   if (i->type == I_FILE) {
-    int top = i->pos_stack.len - 1;
-    if (i->pos_stack.data[top] >= i->backtrack.len) {
+    input_pos_t* pos = input_top(i);
+    if (pos->index >= i->backtrack.len) {
       ungetc(c, i->data.file);
     }
   }
