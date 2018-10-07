@@ -429,7 +429,7 @@ int input_boundary(input_t* i, int(*condition)(char last, char next));
 
 #define OLI_MAJOR 9
 #define OLI_MINOR 2
-#define OLI_PATCH 1
+#define OLI_PATCH 2
 
 #define pp_stringify1(x) #x
 #define pp_stringify(x) pp_stringify1(x)
@@ -796,7 +796,7 @@ char* intern_range(interns_t* interns, char* start, char* end) {
     }
   }
   alloc_size = sizeof(intern_t) - sizeof(new_intern->str) + len;
-  new_intern = (intern_t*)arena_alloc(&interns->arena, alloc_size);
+  new_intern = arena_alloc(&interns->arena, alloc_size);
   if (!new_intern) {
     return 0;
   }
