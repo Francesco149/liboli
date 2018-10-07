@@ -429,7 +429,7 @@ int input_boundary(input_t* i, int(*condition)(char last, char next));
 
 #define OLI_MAJOR 9
 #define OLI_MINOR 2
-#define OLI_PATCH 0
+#define OLI_PATCH 1
 
 #define pp_stringify1(x) #x
 #define pp_stringify(x) pp_stringify1(x)
@@ -681,7 +681,7 @@ int map_seti(map_t* map, int key, int value) {
 
 void* map_get(map_t* map, int key) {
   int i;
-  int hash = hash_int32(key);
+  int hash = hash_int32(key ? key : 1);
   if (!map->cap) {
     return 0;
   }
