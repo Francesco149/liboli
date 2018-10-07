@@ -53,7 +53,7 @@
 void oli_version(int* major, int* minor, int* patch);
 char const* oli_version_str();
 
-#if defined(OLI_INTERN) || defined(OLI_INPUT)
+#if defined(OLI_INTERN) || defined(OLI_HASHMAP) || defined(OLI_INPUT)
 #define OLI_MAP
 #define OLI_ARENA
 #endif
@@ -313,6 +313,48 @@ char* intern_str(interns_t* interns, char* str);
 
 #endif /* OLI_INTERN */
 /* --------------------------------------------------------------------- */
+#if defined(OLI_HASHMAP) || defined(OLI_ALL)
+
+/*
+ * uses an arbitrary hash function on top of map_t to be able to use
+ * any kind of hashable data as key
+ * if hash is null it defaults to hash_fnv32
+ */
+
+typedef int hashmap_f(void* data, int len);
+
+typedef struct hashmap_pair {
+  struct hashmap_pair* next;
+  void* value;
+  int key_len;
+  void* key;
+} hashmap_pair_t;
+
+typedef struct {
+  arena_t arena;
+  map_t map;
+  hashmap_f* hash;
+  hashmap_pair_t* pairs;
+  int n_collisions;
+} hashmap_t;
+
+void hashmap_free(hashmap_t* hashmap);
+int hashmap_hash(hashmap_t* hashmap, void* data, int data_len);
+int hashmap_set(hashmap_t* hashmap, void* key, int key_len, void* value);
+int hashmap_setp(hashmap_t* hashmap, void* key, void* value);
+int hashmap_sets(hashmap_t* hashmap, char* key, void* value);
+int hashmap_seti(hashmap_t* hashmap, void* key, int key_len, int value);
+int hashmap_setpi(hashmap_t* hashmap, void* key, int value);
+int hashmap_setsi(hashmap_t* hashmap, char* key, int value);
+void* hashmap_get(hashmap_t* hashmap, void* key, int key_len);
+void* hashmap_getp(hashmap_t* hashmap, void* key);
+void* hashmap_gets(hashmap_t* hashmap, char* key);
+int hashmap_geti(hashmap_t* hashmap, void* key, int key_len);
+int hashmap_getpi(hashmap_t* hashmap, void* key);
+int hashmap_getsi(hashmap_t* hashmap, char* key);
+
+#endif /* OLI_HASHMAP */
+/* --------------------------------------------------------------------- */
 #if defined(OLI_INPUT) || defined(OLI_ALL)
 
 /*
@@ -386,7 +428,7 @@ int input_boundary(input_t* i, int(*condition)(char last, char next));
 #ifdef OLI_IMPLEMENTATION
 
 #define OLI_MAJOR 9
-#define OLI_MINOR 1
+#define OLI_MINOR 2
 #define OLI_PATCH 0
 
 #define pp_stringify1(x) #x
@@ -772,6 +814,112 @@ char* intern_str(interns_t* interns, char* str) {
 }
 
 #endif /* OLI_INTERN */
+/* --------------------------------------------------------------------- */
+#if defined(OLI_HASHMAP) || defined(OLI_ALL)
+
+typedef struct hashmap_element {
+  hashmap_pair_t pair;
+  struct hashmap_element* next;
+  char key[1]; /* actually key_len bytes */
+} hashmap_element_t;
+
+void hashmap_free(hashmap_t* hashmap) {
+  map_free(&hashmap->map);
+  arena_free(&hashmap->arena);
+}
+
+int hashmap_hash(hashmap_t* hashmap, void* data, int data_len) {
+  return (hashmap->hash ? hashmap->hash : hash_fnv32)(data, data_len);
+}
+
+int hashmap_set(hashmap_t* hashmap, void* key, int key_len, void* value) {
+  int ikey = hashmap_hash(hashmap, key, key_len);
+  hashmap_element_t* first = map_get(&hashmap->map, ikey);
+  hashmap_element_t* it;
+  hashmap_element_t* new;
+  for (it = first; it; it = it->next) {
+    if (it->pair.key_len != key_len) {
+      continue;
+    }
+    if (!memcmp(it->key, key, key_len)) {
+      it->pair.value = value;
+      return 1;
+    }
+  }
+  if (first) {
+    ++hashmap->n_collisions;
+  }
+  new = arena_alloc(&hashmap->arena,
+    sizeof(hashmap_element_t) + key_len - sizeof(new->key));
+  if (!new) {
+    return 0;
+  }
+  new->pair.value = value;
+  new->pair.key = new->key;
+  new->pair.key_len = key_len;
+  new->pair.next = hashmap->pairs;
+  hashmap->pairs = &new->pair;
+  new->next = first;
+  memcpy(new->key, key, key_len);
+  return map_set(&hashmap->map, ikey, new);
+}
+
+int hashmap_setp(hashmap_t* hashmap, void* key, void* value) {
+  return hashmap_set(hashmap, &key, sizeof(key), value);
+}
+
+int hashmap_sets(hashmap_t* hashmap, char* key, void* value) {
+  return hashmap_set(hashmap, key, strlen(key) + 1, value);
+}
+
+int hashmap_seti(hashmap_t* hashmap, void* key, int key_len, int value) {
+  return hashmap_set(hashmap, key, key_len, (void*)(long)value);
+}
+
+int hashmap_setpi(hashmap_t* hashmap, void* key, int value) {
+  return hashmap_setp(hashmap, key, (void*)(long)value);
+}
+
+int hashmap_setsi(hashmap_t* hashmap, char* key, int value) {
+  return hashmap_sets(hashmap, key, (void*)(long)value);
+}
+
+void* hashmap_get(hashmap_t* hashmap, void* key, int key_len) {
+  int ikey = hashmap_hash(hashmap, key, key_len);
+  hashmap_element_t* first = map_get(&hashmap->map, ikey);
+  hashmap_element_t* it;
+  for (it = first; it; it = it->next) {
+    if (it->pair.key_len != key_len) {
+      continue;
+    }
+    if (!memcmp(it->key, key, key_len)) {
+      return it->pair.value;
+    }
+  }
+  return 0;
+}
+
+void* hashmap_getp(hashmap_t* hashmap, void* key) {
+  return hashmap_get(hashmap, &key, sizeof(key));
+}
+
+void* hashmap_gets(hashmap_t* hashmap, char* key) {
+  return hashmap_get(hashmap, key, strlen(key) + 1);
+}
+
+int hashmap_geti(hashmap_t* hashmap, void* key, int key_len) {
+  return (int)(long)hashmap_get(hashmap, key, key_len);
+}
+
+int hashmap_getpi(hashmap_t* hashmap, void* key) {
+  return (int)(long)hashmap_getp(hashmap, key);
+}
+
+int hashmap_getsi(hashmap_t* hashmap, char* key) {
+  return (int)(long)hashmap_gets(hashmap, key);
+}
+
+#endif /* OLI_HASHMAP */
 /* --------------------------------------------------------------------- */
 #if defined(OLI_INPUT) || defined(OLI_ALL)
 
