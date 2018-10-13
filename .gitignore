@@ -4,3 +4,4 @@
 *.so
 tests/*
 !tests/*.c
+!tests/*.h
