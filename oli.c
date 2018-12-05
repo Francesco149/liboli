@@ -429,7 +429,7 @@ int input_boundary(input_t* i, int(*condition)(char last, char next));
 
 #define OLI_MAJOR 9
 #define OLI_MINOR 2
-#define OLI_PATCH 2
+#define OLI_PATCH 3
 
 #define pp_stringify1(x) #x
 #define pp_stringify(x) pp_stringify1(x)
@@ -937,8 +937,8 @@ input_pos_t* input_top(input_t* i) {
 }
 
 void input_push(input_t* i) {
-  input_pos_t* top = input_top(i);
-  array_append(&i->pos_stack, *top);
+  input_pos_t top = *(input_top(i));
+  array_append(&i->pos_stack, top);
 }
 
 void input_pop(input_t* i, int rewind) {
